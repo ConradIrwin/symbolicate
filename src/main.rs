@@ -47,6 +47,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err(format!("{} does not contain debug symbols for this crash", &args[2]).into());
     };
 
+    let mut header = file.body.termination.indicator.clone();
+
+    if header == "Abort trap: 6" {
+        header += " (rust panic)";
+    }
+
+    if let Some(thread) = file.faulting_thread() {
+        header += &format!(" on thread {}", thread.id);
+
+        let mut name = thread.name.clone().unwrap_or_default();
+        if let Some(queue) = thread.queue.as_ref() {
+            name += &format!(" {}", queue);
+        }
+        header += &format!(" ({})", name);
+    }
+    println!("{}", header);
+
     if let Some(thread) = file.faulting_thread() {
         let image_offsets: Vec<String> = thread
             .frames
@@ -65,7 +82,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             .output()?;
         let mut processed_output: Vec<u8> = Vec::new();
         for line in String::from_utf8_lossy(&output.stdout).split("\n") {
-            dbg!(&line);
             let Some((symbol, rest)) = line.split_once("(in") else {
                 processed_output.extend_from_slice(line.as_bytes());
                 processed_output.push(b'\n');
