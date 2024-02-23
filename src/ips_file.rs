@@ -242,7 +242,7 @@ pub struct LegacyInfo {
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct ThreadTriggered {
     pub name: String,
     pub queue: String,
