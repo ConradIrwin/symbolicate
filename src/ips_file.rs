@@ -7,6 +7,7 @@ use serde_json::Value;
 
 #[derive(Debug)]
 pub struct IPSFile {
+    #[allow(unused)]
     pub header: Header,
     pub body: Body,
 }

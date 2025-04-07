@@ -4,16 +4,19 @@ use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read};
-use std::process::Command;
+use std::process::{exit, Command};
 
 use ips_file::IPSFile;
 use rustc_demangle::demangle_stream;
 
+// symbolicate <crash-report> --uuid to get the bundle UUID needed to find the dsym
+// symbolicate <crash-report> <dsym> to symbolicate the crash report
+
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
-        eprintln!("Usage: {} <crash-report> <dsym>", args[0]);
-        return Ok(());
+        eprintln!("Usage: {} <crash-report> [ <dsym> | --uuid ]", args[0]);
+        exit(1)
     }
 
     let path = &args[1];
@@ -22,6 +25,19 @@ fn main() -> Result<(), Box<dyn Error>> {
     file.read_to_end(&mut contents)?;
 
     let file = IPSFile::parse(contents)?;
+
+    if &args[2] == "--uuid" {
+        let identifier = file.body.bundle_info.cfbundle_identifier;
+        for image in file.body.used_images {
+            if image.cfbundle_identifier.as_ref() == Some(&identifier) {
+                println!("{}", image.uuid.to_lowercase());
+                exit(0)
+            }
+        }
+        eprint!("No matching image found");
+        exit(1)
+    }
+
     let dsym_uuid_output = Command::new("dwarfdump")
         .arg("--uuid")
         .arg(&args[2])
